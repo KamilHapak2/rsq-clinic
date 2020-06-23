@@ -40,7 +40,9 @@ class DoctorControllerTest {
 
         // given
         val givenName = "Joe"
-        executePostDoctors(CreateDoctorCommand(givenName))
+        val givenSurname = "Doe"
+        val givenSpec = "dent"
+        executePostDoctors(CreateOrUpdateDoctorCommand(name = givenName, surname = givenSurname, spec = givenSpec))
 
         // when
         val response = executeGetDoctors()
@@ -49,6 +51,8 @@ class DoctorControllerTest {
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(response.body!!.size).isEqualTo(1)
         assertThat(response.body!![0].name).isEqualTo(givenName)
+        assertThat(response.body!![0].surname).isEqualTo(givenSurname)
+        assertThat(response.body!![0].spec).isEqualTo(givenSpec)
     }
 
 
@@ -56,8 +60,8 @@ class DoctorControllerTest {
     internal fun shouldDeleteDoctor() {
 
         // given
-        val givenName = "Joe"
-        val doctor = executePostDoctors(CreateDoctorCommand(givenName)).body
+        val doctor =
+            executePostDoctors(CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "dent")).body
 
         // when
         val deleteResponse = executeDeleteDoctors(doctor!!.id)
@@ -75,27 +79,34 @@ class DoctorControllerTest {
     internal fun shouldUpdateDoctor() {
 
         // given
-        val givenName = "Joe"
-        val doctor = executePostDoctors(CreateDoctorCommand(givenName)).body
-        val expectedName = "Doe"
-
+        val doctor = executePostDoctors(
+            CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "dent")
+        ).body
+        val expectedName = "Jim"
+        val expectedSurname = "Bim"
+        val expectedSpec = "surgeon"
         // when
-        val updateResponse = executePutDoctors(CreateDoctorCommand(expectedName), doctor!!.id)
+        val updateResponse =
+            executePutDoctors(CreateOrUpdateDoctorCommand(expectedName, expectedSurname, expectedSpec), doctor!!.id)
 
         // then
         assertThat(updateResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(updateResponse.body).isNotNull
         assertThat(updateResponse.body!!.name).isEqualTo(expectedName)
+        assertThat(updateResponse.body!!.surname).isEqualTo(expectedSurname)
+        assertThat(updateResponse.body!!.spec).isEqualTo(expectedSpec)
 
         val getResponse = executeGetDoctors()
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(1)
         assertThat(getResponse.body!![0].name).isEqualTo(expectedName)
+        assertThat(getResponse.body!![0].surname).isEqualTo(expectedSurname)
+        assertThat(getResponse.body!![0].spec).isEqualTo(expectedSpec)
 
     }
 
-    private fun executePostDoctors(createDoctorCommand: CreateDoctorCommand): ResponseEntity<DoctorView> {
+    private fun executePostDoctors(createDoctorCommand: CreateOrUpdateDoctorCommand): ResponseEntity<DoctorView> {
         return restTemplate.exchange(
             "/doctors",
             HttpMethod.POST,
@@ -104,7 +115,10 @@ class DoctorControllerTest {
         )
     }
 
-    private fun executePutDoctors(createDoctorCommand: CreateDoctorCommand, id: Long): ResponseEntity<DoctorView> {
+    private fun executePutDoctors(
+        createDoctorCommand: CreateOrUpdateDoctorCommand,
+        id: Long
+    ): ResponseEntity<DoctorView> {
         return restTemplate.exchange(
             "/doctors/$id",
             HttpMethod.PUT,
