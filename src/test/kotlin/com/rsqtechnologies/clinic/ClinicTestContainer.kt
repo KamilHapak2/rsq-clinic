@@ -9,7 +9,6 @@ import org.testcontainers.ext.ScriptUtils
 
 inline fun <reified T : Any> typeRef(): ParameterizedTypeReference<T> = object : ParameterizedTypeReference<T>() {}
 
-
 class ClinicTestContainer(imageName: String) : PostgreSQLContainer<ClinicTestContainer>(imageName) {
 
     companion object Instance {

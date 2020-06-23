@@ -37,11 +37,11 @@ interface PatientRepository : JpaRepository<Patient, Long> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
         """
-                update Patient d set 
-                    d.name = :name, 
-                    d.surname = :surname, 
-                    d.address = :address 
-                    where d.id = :id
+                update Patient p set 
+                    p.name = :name, 
+                    p.surname = :surname, 
+                    p.address = :address 
+                    where p.id = :id
                 """
     )
     fun update(name: String, surname: String, address: String, id: Long)

@@ -121,14 +121,9 @@ class PatientControllerTest {
 
     }
 
-    private fun executePostPatient(createPatientCommand: CreateOrUpdatePatientCommand): ResponseEntity<PatientView> {
-        return restTemplate.exchange(
-            "/patients",
-            HttpMethod.POST,
-            HttpEntity(createPatientCommand),
-            PatientView::class.java
-        )
-    }
+    private fun executePostPatient(createPatientCommand: CreateOrUpdatePatientCommand) =
+        PatientTestUtils.executePostPatient(restTemplate, createPatientCommand)
+
 
     private fun executePutPatient(
         createPatientCommand: CreateOrUpdatePatientCommand,
@@ -157,6 +152,19 @@ class PatientControllerTest {
             HttpMethod.GET,
             HttpEntity.EMPTY,
             typeRef<List<PatientView>>()
+        )
+    }
+
+    object PatientTestUtils {
+
+        fun executePostPatient(
+            restTemplate: TestRestTemplate,
+            createPatientCommand: CreateOrUpdatePatientCommand
+        ): ResponseEntity<PatientView> = restTemplate.exchange(
+            "/patients",
+            HttpMethod.POST,
+            HttpEntity(createPatientCommand),
+            PatientView::class.java
         )
     }
 }

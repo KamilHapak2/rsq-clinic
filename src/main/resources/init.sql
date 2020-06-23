@@ -21,3 +21,13 @@ CREATE TABLE patient
     address             VARCHAR(128) NOT NULL
 );
 
+CREATE TABLE visit
+(
+    id                  SERIAL PRIMARY KEY,
+    version             INTEGER DEFAULT 0,
+    date_time           TIMESTAMP,
+    location            VARCHAR(128) NOT NULL,
+    doctor_id           BIGINT NOT NULL,
+    patient_id          BIGINT NOT NULL
+);
+

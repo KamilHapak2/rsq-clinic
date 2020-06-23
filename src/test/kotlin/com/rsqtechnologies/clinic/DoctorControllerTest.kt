@@ -29,7 +29,7 @@ class DoctorControllerTest {
     internal fun shouldGETDoctors() {
 
         // when
-        val response = executeGetDoctors()
+        val response = executeGetDoctors() // todo dodać jakieś obiekty, + pobieranie po id
 
         // then
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
@@ -85,6 +85,7 @@ class DoctorControllerTest {
         val expectedName = "Jim"
         val expectedSurname = "Bim"
         val expectedSpec = "surgeon"
+
         // when
         val updateResponse =
             executePutDoctors(CreateOrUpdateDoctorCommand(expectedName, expectedSurname, expectedSpec), doctor!!.id)
@@ -106,14 +107,9 @@ class DoctorControllerTest {
 
     }
 
-    private fun executePostDoctors(createDoctorCommand: CreateOrUpdateDoctorCommand): ResponseEntity<DoctorView> {
-        return restTemplate.exchange(
-            "/doctors",
-            HttpMethod.POST,
-            HttpEntity(createDoctorCommand),
-            DoctorView::class.java
-        )
-    }
+    private fun executePostDoctors(createDoctorCommand: CreateOrUpdateDoctorCommand) =
+        DoctorTestUtils.executePostDoctors(restTemplate, createDoctorCommand)
+
 
     private fun executePutDoctors(
         createDoctorCommand: CreateOrUpdateDoctorCommand,
@@ -142,6 +138,20 @@ class DoctorControllerTest {
             HttpMethod.GET,
             HttpEntity.EMPTY,
             typeRef<List<DoctorView>>()
+        )
+    }
+
+
+    object DoctorTestUtils {
+
+        fun executePostDoctors(
+            restTemplate: TestRestTemplate,
+            createDoctorCommand: CreateOrUpdateDoctorCommand
+        ): ResponseEntity<DoctorView> = restTemplate.exchange(
+            "/doctors",
+            HttpMethod.POST,
+            HttpEntity(createDoctorCommand),
+            DoctorView::class.java
         )
     }
 }
