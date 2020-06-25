@@ -16,7 +16,6 @@ import org.springframework.test.context.ContextConfiguration
 @ContextConfiguration(initializers = [ClinicTestContainer.Initializer::class])
 class PatientControllerTest {
 
-
     @BeforeEach
     internal fun setUp() {
         ClinicTestContainer.createDropDatabase()
@@ -26,27 +25,21 @@ class PatientControllerTest {
     private lateinit var restTemplate: TestRestTemplate
 
     @Test
-    internal fun shouldGETPatients() {
-
-        // when
-        val response = executeGetPatients()
-
-        // then
-        assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-    }
-
-    @Test
-    internal fun shouldCreatePatient() {
+    internal fun shouldGetPatients() {
 
         // given
-        val givenName = "Joe"
-        val givenSurname = "Doe"
-        val givenAddress = "Jim 123, 12-222 New York"
         executePostPatient(
             CreateOrUpdatePatientCommand(
-                name = givenName,
-                surname = givenSurname,
-                address = givenAddress
+                name = "Joe",
+                surname = "Doe",
+                address = "Jim 123, 12-222 New York"
+            )
+        )
+        executePostPatient(
+            CreateOrUpdatePatientCommand(
+                name = "Jim",
+                surname = "Bim",
+                address = "Bim 123, 12-333 York"
             )
         )
 
@@ -55,12 +48,31 @@ class PatientControllerTest {
 
         // then
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-        assertThat(response.body!!.size).isEqualTo(1)
-        assertThat(response.body!![0].name).isEqualTo(givenName)
-        assertThat(response.body!![0].surname).isEqualTo(givenSurname)
-        assertThat(response.body!![0].address).isEqualTo(givenAddress)
+        assertThat(response.body).isNotNull
+        assertThat(response.body!!.size).isEqualTo(2)
     }
 
+    @Test
+    internal fun shouldCreatePatient() {
+
+        // given
+        val givenCreateCommand = CreateOrUpdatePatientCommand(
+            name = "Joe",
+            surname = "Doe",
+            address = "Jim 123, 12-222 New York"
+        )
+
+        // when
+        executePostPatient(
+            givenCreateCommand
+        )
+
+        // then
+        val response = executeGetPatients()
+        assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+        assertThat(response.body!!.size).isEqualTo(1)
+        assertEquals(response.body!![0], givenCreateCommand)
+    }
 
     @Test
     internal fun shouldDeletePatient() {
@@ -84,7 +96,6 @@ class PatientControllerTest {
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(0)
-
     }
 
     @Test
@@ -94,36 +105,39 @@ class PatientControllerTest {
         val patient = executePostPatient(
             CreateOrUpdatePatientCommand(name = "Joe", surname = "Doe", address = "Joe 123, 12-222 York")
         ).body
-        val expectedName = "Jim"
-        val expectedSurname = "Bim"
-        val expectedAddress = "Jim 123, 12-222 New York"
+        val givenUpdateCommand = CreateOrUpdatePatientCommand("Jim", "Bim", "Jim 123, 12-222 New York")
+
         // when
         val updateResponse =
             executePutPatient(
-                CreateOrUpdatePatientCommand(expectedName, expectedSurname, expectedAddress),
+                givenUpdateCommand,
                 patient!!.id
             )
 
         // then
         assertThat(updateResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(updateResponse.body).isNotNull
-        assertThat(updateResponse.body!!.name).isEqualTo(expectedName)
-        assertThat(updateResponse.body!!.surname).isEqualTo(expectedSurname)
-        assertThat(updateResponse.body!!.address).isEqualTo(expectedAddress)
+        assertEquals(updateResponse.body, givenUpdateCommand)
 
         val getResponse = executeGetPatients()
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(1)
-        assertThat(getResponse.body!![0].name).isEqualTo(expectedName)
-        assertThat(getResponse.body!![0].surname).isEqualTo(expectedSurname)
-        assertThat(getResponse.body!![0].address).isEqualTo(expectedAddress)
+        assertEquals(getResponse.body!![0], givenUpdateCommand)
+    }
 
+    private fun assertEquals(
+        actualPatient: PatientView?,
+        expectedPatient: CreateOrUpdatePatientCommand
+    ) {
+        assertThat(actualPatient).isNotNull
+        assertThat(actualPatient!!.name).isEqualTo(expectedPatient.name)
+        assertThat(actualPatient.surname).isEqualTo(expectedPatient.surname)
+        assertThat(actualPatient.address).isEqualTo(expectedPatient.address)
     }
 
     private fun executePostPatient(createPatientCommand: CreateOrUpdatePatientCommand) =
         PatientTestUtils.executePostPatient(restTemplate, createPatientCommand)
-
 
     private fun executePutPatient(
         createPatientCommand: CreateOrUpdatePatientCommand,

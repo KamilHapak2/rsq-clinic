@@ -16,7 +16,6 @@ import org.springframework.test.context.ContextConfiguration
 @ContextConfiguration(initializers = [ClinicTestContainer.Initializer::class])
 class DoctorControllerTest {
 
-
     @BeforeEach
     internal fun setUp() {
         ClinicTestContainer.createDropDatabase()
@@ -26,35 +25,39 @@ class DoctorControllerTest {
     private lateinit var restTemplate: TestRestTemplate
 
     @Test
-    internal fun shouldGETDoctors() {
-
-        // when
-        val response = executeGetDoctors() // todo dodać jakieś obiekty, + pobieranie po id
-
-        // then
-        assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-    }
-
-    @Test
-    internal fun shouldCreateDoctor() {
+    internal fun shouldGetDoctors() {
 
         // given
-        val givenName = "Joe"
-        val givenSurname = "Doe"
-        val givenSpec = "dent"
-        executePostDoctors(CreateOrUpdateDoctorCommand(name = givenName, surname = givenSurname, spec = givenSpec))
+        executePostDoctors(CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "Dent"))
+        executePostDoctors(CreateOrUpdateDoctorCommand(name = "Daniel", surname = "Jackson", spec = "Surgeon"))
+        executePostDoctors(CreateOrUpdateDoctorCommand(name = "Jim", surname = "Bim", spec = "Psychologist"))
 
         // when
         val response = executeGetDoctors()
 
         // then
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-        assertThat(response.body!!.size).isEqualTo(1)
-        assertThat(response.body!![0].name).isEqualTo(givenName)
-        assertThat(response.body!![0].surname).isEqualTo(givenSurname)
-        assertThat(response.body!![0].spec).isEqualTo(givenSpec)
+        assertThat(response.body).isNotNull
+        assertThat(response.body!!.size).isEqualTo(3)
     }
 
+    @Test
+    internal fun shouldCreateDoctor() {
+
+        // given
+        val givenCreateCommand =
+            CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "dent")
+        executePostDoctors(givenCreateCommand)
+
+        // when
+        val response = executeGetDoctors()
+
+        // then
+        assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+        assertThat(response.body).isNotNull
+        assertThat(response.body!!.size).isEqualTo(1)
+        assertEquals(response.body!![0], givenCreateCommand)
+    }
 
     @Test
     internal fun shouldDeleteDoctor() {
@@ -72,7 +75,6 @@ class DoctorControllerTest {
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(0)
-
     }
 
     @Test
@@ -82,34 +84,35 @@ class DoctorControllerTest {
         val doctor = executePostDoctors(
             CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "dent")
         ).body
-        val expectedName = "Jim"
-        val expectedSurname = "Bim"
-        val expectedSpec = "surgeon"
+        val givenUpdateCommand = CreateOrUpdateDoctorCommand("Jim", "Bim", "surgeon")
 
         // when
         val updateResponse =
-            executePutDoctors(CreateOrUpdateDoctorCommand(expectedName, expectedSurname, expectedSpec), doctor!!.id)
+            executePutDoctors(givenUpdateCommand, doctor!!.id)
 
         // then
         assertThat(updateResponse.statusCode).isEqualTo(HttpStatus.OK)
-        assertThat(updateResponse.body).isNotNull
-        assertThat(updateResponse.body!!.name).isEqualTo(expectedName)
-        assertThat(updateResponse.body!!.surname).isEqualTo(expectedSurname)
-        assertThat(updateResponse.body!!.spec).isEqualTo(expectedSpec)
+        assertEquals(updateResponse.body, givenUpdateCommand)
 
         val getResponse = executeGetDoctors()
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(1)
-        assertThat(getResponse.body!![0].name).isEqualTo(expectedName)
-        assertThat(getResponse.body!![0].surname).isEqualTo(expectedSurname)
-        assertThat(getResponse.body!![0].spec).isEqualTo(expectedSpec)
+        assertEquals(getResponse.body!![0], givenUpdateCommand)
+    }
 
+    private fun assertEquals(
+        actualDoctor: DoctorView?,
+        expectedDoctor: CreateOrUpdateDoctorCommand
+    ) {
+        assertThat(actualDoctor).isNotNull
+        assertThat(actualDoctor!!.name).isEqualTo(expectedDoctor.name)
+        assertThat(actualDoctor.surname).isEqualTo(expectedDoctor.surname)
+        assertThat(actualDoctor.spec).isEqualTo(expectedDoctor.spec)
     }
 
     private fun executePostDoctors(createDoctorCommand: CreateOrUpdateDoctorCommand) =
         DoctorTestUtils.executePostDoctors(restTemplate, createDoctorCommand)
-
 
     private fun executePutDoctors(
         createDoctorCommand: CreateOrUpdateDoctorCommand,
@@ -140,7 +143,6 @@ class DoctorControllerTest {
             typeRef<List<DoctorView>>()
         )
     }
-
 
     object DoctorTestUtils {
 

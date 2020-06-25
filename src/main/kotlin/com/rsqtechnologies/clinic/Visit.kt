@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
 import javax.persistence.*
 import javax.transaction.Transactional
-import javax.websocket.server.PathParam
 
 @Entity
 data class Visit(
