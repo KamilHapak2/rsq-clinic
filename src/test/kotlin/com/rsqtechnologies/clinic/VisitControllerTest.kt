@@ -2,6 +2,10 @@ package com.rsqtechnologies.clinic
 
 import com.rsqtechnologies.clinic.DoctorControllerTest.DoctorTestUtils.executePostDoctors
 import com.rsqtechnologies.clinic.PatientControllerTest.PatientTestUtils.executePostPatient
+import com.rsqtechnologies.clinic.VisitControllerTest.VisitTestUtils.executeDeleteVisit
+import com.rsqtechnologies.clinic.VisitControllerTest.VisitTestUtils.executeGetVisits
+import com.rsqtechnologies.clinic.VisitControllerTest.VisitTestUtils.executePostVisit
+import com.rsqtechnologies.clinic.VisitControllerTest.VisitTestUtils.executePutVisitDateTime
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -33,25 +37,27 @@ class VisitControllerTest {
         // given
         val givenPatientId = createPatient()
         executePostVisit(
+            restTemplate,
             CreateVisitCommand(
                 dateTime = LocalDateTime.of(2020, 1, 1, 12, 0),
                 location = "Health 123, 12-222 Hospital",
                 patientId = givenPatientId,
-                doctorId = createDoctor()
+                doctorId = createDoctor()!!.id
             )
         )
 
         executePostVisit(
+            restTemplate,
             CreateVisitCommand(
                 dateTime = LocalDateTime.of(2021, 12, 2, 10, 30),
                 location = "Amazing 22, 01-001 York",
                 patientId = givenPatientId,
-                doctorId = createDoctor()
+                doctorId = createDoctor()!!.id
             )
         )
 
         // when
-        val response = executeGetVisits(patientId = givenPatientId)
+        val response = executeGetVisits(restTemplate, givenPatientId)
 
         // then
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
@@ -64,24 +70,26 @@ class VisitControllerTest {
 
         // given
 
+        val doctor = createDoctor()
         val givenCreateCommand = CreateVisitCommand(
             dateTime = LocalDateTime.of(2020, 1, 1, 12, 0),
             location = "Health 123, 12-222 Hospital",
             patientId = createPatient(),
-            doctorId = createDoctor()
+            doctorId = doctor!!.id
         )
 
         // when
         executePostVisit(
+            restTemplate,
             givenCreateCommand
         )
 
         // then
-        val response = executeGetVisits()
+        val response = executeGetVisits(restTemplate)
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(response.body).isNotNull
         assertThat(response.body!!.size).isEqualTo(1)
-        assertEquals(response.body!![0], givenCreateCommand)
+        assertEquals(response.body!![0], givenCreateCommand, doctor)
     }
 
     @Test
@@ -89,46 +97,49 @@ class VisitControllerTest {
 
         // given
         val visit = executePostVisit(
+            restTemplate,
             CreateVisitCommand(
                 dateTime = LocalDateTime.of(2020, 1, 1, 12, 0),
                 location = "Health 123, 12-222 Hospital",
                 patientId = createPatient(),
-                doctorId = createDoctor()
+                doctorId = createDoctor()!!.id
             )
         ).body
 
         // when
-        val deleteResponse = executeDeleteVisit(visit!!.id)
+        val deleteResponse = executeDeleteVisit(restTemplate, visit!!.id)
 
         // then
         assertThat(deleteResponse.statusCode).isEqualTo(HttpStatus.NO_CONTENT)
-        val getResponse = executeGetVisits()
+        val getResponse = executeGetVisits(restTemplate)
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(0)
     }
 
     @Test
-    internal fun shouldUpdatePatient() {
+    internal fun shouldUpdateVisit() {
 
-        val givenDoctorId = createDoctor()
+        val givenDoctor = createDoctor()
         val givenPatientId = createPatient()
         val givenDateTime = LocalDateTime.of(2020, 1, 1, 12, 0)
         val expectedDateTime = LocalDateTime.of(2020, 1, 2, 12, 0)
         val givenLocation = "Health 123, 12-222 Hospital"
 
         val visit = executePostVisit(
+            restTemplate,
             CreateVisitCommand(
                 dateTime = givenDateTime,
                 location = givenLocation,
                 patientId = givenPatientId,
-                doctorId = givenDoctorId
+                doctorId = givenDoctor!!.id
             )
         ).body
 
         // when
         val updateResponse =
-            executePatchVisitDateTime(
+            executePutVisitDateTime(
+                restTemplate,
                 UpdateVisitDateTimeCommand(expectedDateTime),
                 visit!!.id
             )
@@ -139,75 +150,33 @@ class VisitControllerTest {
         assertThat(updateResponse.body!!.dateTime).isEqualTo(expectedDateTime)
         assertThat(updateResponse.body!!.location).isEqualTo(givenLocation)
         assertThat(updateResponse.body!!.patientId).isEqualTo(givenPatientId)
-        assertThat(updateResponse.body!!.doctorId).isEqualTo(givenDoctorId)
+        assertThat(updateResponse.body!!.doctor.id).isEqualTo(givenDoctor.id)
 
-        val getResponse = executeGetVisits()
+        val getResponse = executeGetVisits(restTemplate)
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(1)
         assertThat(updateResponse.body!!.dateTime).isEqualTo(expectedDateTime)
         assertThat(updateResponse.body!!.location).isEqualTo(givenLocation)
         assertThat(updateResponse.body!!.patientId).isEqualTo(givenPatientId)
-        assertThat(updateResponse.body!!.doctorId).isEqualTo(givenDoctorId)
+        assertThat(updateResponse.body!!.doctor.id).isEqualTo(givenDoctor.id)
     }
 
     private fun assertEquals(
         actualVisit: VisitView?,
-        expectedVisit: CreateVisitCommand
+        expectedVisit: CreateVisitCommand,
+        expectedDoctor: DoctorView
     ) {
         assertThat(actualVisit).isNotNull
         assertThat(actualVisit!!.dateTime).isEqualTo(expectedVisit.dateTime)
         assertThat(actualVisit.location).isEqualTo(expectedVisit.location)
-        assertThat(actualVisit.doctorId).isEqualTo(expectedVisit.doctorId)
+        assertThat(actualVisit.doctor.id).isEqualTo(expectedVisit.doctorId)
         assertThat(actualVisit.patientId).isEqualTo(expectedVisit.patientId)
-    }
 
-    private fun executePostVisit(createVisitCommand: CreateVisitCommand): ResponseEntity<VisitView> {
-        return restTemplate.exchange(
-            "/visits",
-            HttpMethod.POST,
-            HttpEntity(createVisitCommand),
-            VisitView::class.java
-        )
-    }
-
-    private fun executePatchVisitDateTime(
-        updateVisitCommand: UpdateVisitDateTimeCommand,
-        id: Long
-    ): ResponseEntity<VisitView> {
-        return restTemplate.exchange(
-            "/visits/$id/dateTime",
-            HttpMethod.PUT,
-            HttpEntity(updateVisitCommand),
-            VisitView::class.java
-        )
-    }
-
-    private fun executeDeleteVisit(id: Long): ResponseEntity<Void> {
-        return restTemplate.exchange(
-            "/visits/$id",
-            HttpMethod.DELETE,
-            HttpEntity.EMPTY,
-            Void::class.java
-        )
-    }
-
-    private fun executeGetVisits(): ResponseEntity<List<VisitView>> {
-        return restTemplate.exchange(
-            "/visits",
-            HttpMethod.GET,
-            HttpEntity.EMPTY,
-            typeRef<List<VisitView>>()
-        )
-    }
-
-    private fun executeGetVisits(patientId: Long): ResponseEntity<List<VisitView>> {
-        return restTemplate.exchange(
-            "/visits?patientId=$patientId",
-            HttpMethod.GET,
-            HttpEntity.EMPTY,
-            typeRef<List<VisitView>>()
-        )
+        assertThat(actualVisit.doctor.id).isEqualTo(expectedDoctor.id)
+        assertThat(actualVisit.doctor.name).isEqualTo(expectedDoctor.name)
+        assertThat(actualVisit.doctor.surname).isEqualTo(expectedDoctor.surname)
+        assertThat(actualVisit.doctor.spec).isEqualTo(expectedDoctor.spec)
     }
 
     private fun createDoctor() =
@@ -217,7 +186,7 @@ class VisitControllerTest {
                 "Bim",
                 "surgeon"
             )
-        ).body!!.id
+        ).body
 
     private fun createPatient() =
         executePostPatient(
@@ -227,4 +196,59 @@ class VisitControllerTest {
                 "Jin 123, 12-123 Bim"
             )
         ).body!!.id
+
+    object VisitTestUtils {
+
+        fun executeGetVisit(
+            restTemplate: TestRestTemplate,
+            visitId: Long
+        ): ResponseEntity<VisitView> = restTemplate.exchange(
+            "/visits/$visitId",
+            HttpMethod.GET,
+            HttpEntity.EMPTY,
+            VisitView::class.java
+        )
+
+        fun executeGetVisits(
+            restTemplate: TestRestTemplate,
+            patientId: Long = 0
+        ): ResponseEntity<List<VisitView>> = restTemplate.exchange(
+            "/visits?patientId=$patientId",
+            HttpMethod.GET,
+            HttpEntity.EMPTY,
+            typeRef<List<VisitView>>()
+        )
+
+        fun executePostVisit(
+            restTemplate: TestRestTemplate,
+            createVisitCommand: CreateVisitCommand
+        ): ResponseEntity<VisitView> = restTemplate.exchange(
+            "/visits",
+            HttpMethod.POST,
+            HttpEntity(createVisitCommand),
+            VisitView::class.java
+        )
+
+
+        fun executePutVisitDateTime(
+            restTemplate: TestRestTemplate,
+            updateVisitCommand: UpdateVisitDateTimeCommand,
+            id: Long
+        ): ResponseEntity<VisitView> = restTemplate.exchange(
+            "/visits/$id/dateTime",
+            HttpMethod.PUT,
+            HttpEntity(updateVisitCommand),
+            VisitView::class.java
+        )
+
+
+        fun executeDeleteVisit(restTemplate: TestRestTemplate, id: Long): ResponseEntity<Void> {
+            return restTemplate.exchange(
+                "/visits/$id",
+                HttpMethod.DELETE,
+                HttpEntity.EMPTY,
+                Void::class.java
+            )
+        }
+    }
 }

@@ -27,7 +27,7 @@ CREATE TABLE visit
     version             INTEGER DEFAULT 0,
     date_time           TIMESTAMP,
     location            VARCHAR(128) NOT NULL,
-    doctor_id           BIGINT NOT NULL,
-    patient_id          BIGINT NOT NULL
+    doctor_id           BIGINT NOT NULL references doctor(id),
+    patient_id          BIGINT NOT NULL --references patient(id)
 );
 

@@ -7,14 +7,19 @@ import org.springframework.web.bind.annotation.*
 import javax.persistence.*
 import org.springframework.data.jpa.repository.Query
 import org.springframework.http.ResponseEntity
-import javax.transaction.Transactional
 
+import javax.transaction.Transactional
 
 @Entity
 data class Doctor(
+
     val name: String,
     val surname: String,
     val spec: String,
+
+    @OneToMany(cascade = [CascadeType.REMOVE], mappedBy = "doctor")
+    val visits: Set<Visit> = setOf(),
+
     @Version val version: Int? = 0,
     @Id
     @SequenceGenerator(
@@ -24,12 +29,35 @@ data class Doctor(
     )
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "doctor_id_seq") val id: Long? = null
 ) {
+
     companion object {
         fun from(createCommand: CreateOrUpdateDoctorCommand) =
             Doctor(name = createCommand.name, surname = createCommand.surname, spec = createCommand.spec)
     }
 
     fun toDto(): DoctorView = DoctorView(name, surname, spec, id ?: 0)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Doctor
+
+        if (version != other.version) return false
+        if (id != other.id) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = version ?: 0
+        result = 31 * result + (id?.hashCode() ?: 0)
+        return result
+    }
+
+    override fun toString(): String {
+        return "Doctor(name='$name', surname='$surname', spec='$spec', visits=$visits, version=$version, id=$id)"
+    }
 }
 
 interface DoctorRepository : JpaRepository<Doctor, Long> {

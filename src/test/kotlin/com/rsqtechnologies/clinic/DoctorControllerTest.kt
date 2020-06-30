@@ -1,5 +1,7 @@
 package com.rsqtechnologies.clinic
 
+import com.rsqtechnologies.clinic.DoctorControllerTest.DoctorTestUtils.executePostDoctors
+import com.rsqtechnologies.clinic.VisitControllerTest.VisitTestUtils.executeGetVisit
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -11,6 +13,7 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.test.context.ContextConfiguration
+import java.time.LocalDateTime
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ContextConfiguration(initializers = [ClinicTestContainer.Initializer::class])
@@ -28,12 +31,18 @@ class DoctorControllerTest {
     internal fun shouldGetDoctors() {
 
         // given
-        executePostDoctors(CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "Dent"))
-        executePostDoctors(CreateOrUpdateDoctorCommand(name = "Daniel", surname = "Jackson", spec = "Surgeon"))
-        executePostDoctors(CreateOrUpdateDoctorCommand(name = "Jim", surname = "Bim", spec = "Psychologist"))
+        executePostDoctors(restTemplate, CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "Dent"))
+        executePostDoctors(
+            restTemplate,
+            CreateOrUpdateDoctorCommand(name = "Daniel", surname = "Jackson", spec = "Surgeon")
+        )
+        executePostDoctors(
+            restTemplate,
+            CreateOrUpdateDoctorCommand(name = "Jim", surname = "Bim", spec = "Psychologist")
+        )
 
         // when
-        val response = executeGetDoctors()
+        val response = executeGetDoctors(restTemplate)
 
         // then
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
@@ -47,10 +56,10 @@ class DoctorControllerTest {
         // given
         val givenCreateCommand =
             CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "dent")
-        executePostDoctors(givenCreateCommand)
+        executePostDoctors(restTemplate, givenCreateCommand)
 
         // when
-        val response = executeGetDoctors()
+        val response = executeGetDoctors(restTemplate)
 
         // then
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
@@ -64,17 +73,25 @@ class DoctorControllerTest {
 
         // given
         val doctor =
-            executePostDoctors(CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "dent")).body
+            executePostDoctors(
+                restTemplate,
+                CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "dent")
+            ).body
+        val visit: VisitView = VisitControllerTest.VisitTestUtils.executePostVisit(
+            restTemplate,
+            CreateVisitCommand(LocalDateTime.of(2020, 12, 12, 12, 0), "location 123,  12-123 Test", doctor!!.id, 1)
+        ).body!!
 
         // when
-        val deleteResponse = executeDeleteDoctors(doctor!!.id)
+        val deleteResponse = executeDeleteDoctors(restTemplate, doctor.id)
 
         // then
         assertThat(deleteResponse.statusCode).isEqualTo(HttpStatus.NO_CONTENT)
-        val getResponse = executeGetDoctors()
+        val getResponse = executeGetDoctors(restTemplate)
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(0)
+        assertThat(executeGetVisit(restTemplate, visit.id).statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
 
     @Test
@@ -82,19 +99,20 @@ class DoctorControllerTest {
 
         // given
         val doctor = executePostDoctors(
+            restTemplate,
             CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "dent")
         ).body
         val givenUpdateCommand = CreateOrUpdateDoctorCommand("Jim", "Bim", "surgeon")
 
         // when
         val updateResponse =
-            executePutDoctors(givenUpdateCommand, doctor!!.id)
+            executePutDoctors(restTemplate, givenUpdateCommand, doctor!!.id)
 
         // then
         assertThat(updateResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertEquals(updateResponse.body, givenUpdateCommand)
 
-        val getResponse = executeGetDoctors()
+        val getResponse = executeGetDoctors(restTemplate)
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(1)
@@ -111,39 +129,6 @@ class DoctorControllerTest {
         assertThat(actualDoctor.spec).isEqualTo(expectedDoctor.spec)
     }
 
-    private fun executePostDoctors(createDoctorCommand: CreateOrUpdateDoctorCommand) =
-        DoctorTestUtils.executePostDoctors(restTemplate, createDoctorCommand)
-
-    private fun executePutDoctors(
-        createDoctorCommand: CreateOrUpdateDoctorCommand,
-        id: Long
-    ): ResponseEntity<DoctorView> {
-        return restTemplate.exchange(
-            "/doctors/$id",
-            HttpMethod.PUT,
-            HttpEntity(createDoctorCommand),
-            DoctorView::class.java
-        )
-    }
-
-    private fun executeDeleteDoctors(id: Long): ResponseEntity<Void> {
-        return restTemplate.exchange(
-            "/doctors/$id",
-            HttpMethod.DELETE,
-            HttpEntity.EMPTY,
-            Void::class.java
-        )
-    }
-
-    private fun executeGetDoctors(): ResponseEntity<List<DoctorView>> {
-        return restTemplate.exchange(
-            "/doctors",
-            HttpMethod.GET,
-            HttpEntity.EMPTY,
-            typeRef<List<DoctorView>>()
-        )
-    }
-
     object DoctorTestUtils {
 
         fun executePostDoctors(
@@ -156,4 +141,36 @@ class DoctorControllerTest {
             DoctorView::class.java
         )
     }
+
+    fun executePutDoctors(
+        restTemplate: TestRestTemplate,
+        createDoctorCommand: CreateOrUpdateDoctorCommand,
+        id: Long
+    ): ResponseEntity<DoctorView> {
+        return restTemplate.exchange(
+            "/doctors/$id",
+            HttpMethod.PUT,
+            HttpEntity(createDoctorCommand),
+            DoctorView::class.java
+        )
+    }
+
+    fun executeDeleteDoctors(restTemplate: TestRestTemplate, id: Long): ResponseEntity<Void> {
+        return restTemplate.exchange(
+            "/doctors/$id",
+            HttpMethod.DELETE,
+            HttpEntity.EMPTY,
+            Void::class.java
+        )
+    }
+
+    fun executeGetDoctors(restTemplate: TestRestTemplate): ResponseEntity<List<DoctorView>> {
+        return restTemplate.exchange(
+            "/doctors",
+            HttpMethod.GET,
+            HttpEntity.EMPTY,
+            typeRef<List<DoctorView>>()
+        )
+    }
+
 }
