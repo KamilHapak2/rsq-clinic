@@ -28,6 +28,6 @@ CREATE TABLE visit
     date_time           TIMESTAMP,
     location            VARCHAR(128) NOT NULL,
     doctor_id           BIGINT NOT NULL references doctor(id),
-    patient_id          BIGINT NOT NULL --references patient(id)
+    patient_id          BIGINT NOT NULL references patient(id)
 );
 

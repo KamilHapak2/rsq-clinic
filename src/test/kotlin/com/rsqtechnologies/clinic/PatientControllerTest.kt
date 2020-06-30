@@ -173,7 +173,11 @@ class PatientControllerTest {
 
         fun executePostPatient(
             restTemplate: TestRestTemplate,
-            createPatientCommand: CreateOrUpdatePatientCommand
+            createPatientCommand: CreateOrUpdatePatientCommand = CreateOrUpdatePatientCommand(
+                name = "Joe",
+                surname = "Doe",
+                address = "street 123, 12-123 Dentistic City"
+            )
         ): ResponseEntity<PatientView> = restTemplate.exchange(
             "/patients",
             HttpMethod.POST,

@@ -19,7 +19,9 @@ data class Visit(
 
     @JoinColumn(name = "doctor_id")
     @ManyToOne val doctor: Doctor,
-    val patientId: Long,
+
+    @JoinColumn(name = "patient_id")
+    @ManyToOne val patient: Patient,
 
     @Version val version: Int? = 0,
     @Id
@@ -31,13 +33,12 @@ data class Visit(
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "visit_id_seq") val id: Long? = null
 ) {
 
-
     companion object {
-        fun from(createCommand: CreateVisitCommand, doctor: Doctor) =
+        fun from(createCommand: CreateVisitCommand, doctor: Doctor, patient: Patient) =
             Visit(
                 dateTime = createCommand.dateTime,
                 location = createCommand.location,
-                patientId = createCommand.patientId,
+                patient = patient,
                 doctor = doctor
             )
     }
@@ -47,7 +48,7 @@ data class Visit(
             dateTime = dateTime,
             location = location,
             doctor = doctor.toDto(),
-            patientId = patientId,
+            patient = patient.toDto(),
             id = id ?: 0
         )
 
@@ -70,7 +71,7 @@ data class Visit(
     }
 
     override fun toString(): String {
-        return "Visit(dateTime=$dateTime, location='$location', doctor=$doctor, patientId=$patientId, version=$version, id=$id)"
+        return "Visit(dateTime=$dateTime, location='$location', doctor=$doctor, patientId=$patient, version=$version, id=$id)"
     }
 }
 
@@ -89,16 +90,24 @@ interface VisitRepository : JpaRepository<Visit, Long> {
     fun findAllByPatientId(patientId: Long): List<Visit>
 }
 
-class InvalidDoctorIdException(message: String?) : BadRequestException(message)
 
 @Service
-class VisitService(private val doctorRepository: DoctorRepository, private val visitRepository: VisitRepository) {
+class VisitService(
+    private val doctorRepository: DoctorRepository,
+    private val visitRepository: VisitRepository,
+    private val patientRepository: PatientRepository
+) {
 
     fun createVisit(createCommand: CreateVisitCommand): VisitView {
 
         val doctor = doctorRepository.findById(createCommand.doctorId)
-            .orElseThrow { InvalidDoctorIdException("Invalid doctor ID: " + createCommand.doctorId) }
-        return visitRepository.save(Visit.from(createCommand, doctor = doctor)).toDto()
+            .orElseThrow { BadRequestException("Invalid doctor ID: " + createCommand.doctorId) }
+
+        val patient = patientRepository.findById(createCommand.patientId)
+            .orElseThrow { BadRequestException("Invalid patient ID: " + createCommand.patientId) }
+
+        return visitRepository.save(Visit.from(createCommand = createCommand, doctor = doctor, patient = patient))
+            .toDto()
     }
 
     fun updateVisitDateTime(dateTime: LocalDateTime, visitId: Long): Optional<VisitView> {
@@ -119,7 +128,6 @@ class VisitService(private val doctorRepository: DoctorRepository, private val v
     }
 
     fun findOneById(visitId: Long): Optional<VisitView> = visitRepository.findById(visitId).map(Visit::toDto)
-
 }
 
 @RestController
@@ -132,7 +140,6 @@ class VisitController(private val visitService: VisitService) {
         @RequestBody updateCommand: UpdateVisitDateTimeCommand
     ) = ResponseEntity.of(visitService.updateVisitDateTime(updateCommand.dateTime, visitId))
 
-
     @DeleteMapping("/{visitId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deleteVisit(@PathVariable visitId: Long) = visitService.deleteById(visitId)
@@ -142,7 +149,6 @@ class VisitController(private val visitService: VisitService) {
 
     @GetMapping
     fun findVisits(@RequestParam(defaultValue = "0") patientId: Long) = visitService.findVisits(patientId)
-
 
     @GetMapping("/{visitId}")
     fun findVisitById(@PathVariable visitId: Long) = ResponseEntity.of(visitService.findOneById(visitId))
@@ -163,7 +169,7 @@ data class VisitView(
     val dateTime: LocalDateTime,
     val location: String,
     val doctor: DoctorView,
-    val patientId: Long,
+    val patient: PatientView,
     val id: Long
 )
 

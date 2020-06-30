@@ -35,14 +35,15 @@ class VisitControllerTest {
     internal fun shouldGetVisits() {
 
         // given
-        val givenPatientId = createPatient()
+        val givenPatientId = executePostPatient(restTemplate).body!!.id
+        val givenDoctorId = executePostDoctors(restTemplate).body!!.id
         executePostVisit(
             restTemplate,
             CreateVisitCommand(
                 dateTime = LocalDateTime.of(2020, 1, 1, 12, 0),
                 location = "Health 123, 12-222 Hospital",
                 patientId = givenPatientId,
-                doctorId = createDoctor()!!.id
+                doctorId = givenDoctorId
             )
         )
 
@@ -52,7 +53,7 @@ class VisitControllerTest {
                 dateTime = LocalDateTime.of(2021, 12, 2, 10, 30),
                 location = "Amazing 22, 01-001 York",
                 patientId = givenPatientId,
-                doctorId = createDoctor()!!.id
+                doctorId = givenDoctorId
             )
         )
 
@@ -69,13 +70,14 @@ class VisitControllerTest {
     internal fun shouldCreateVisit() {
 
         // given
+        val givenPatient = executePostPatient(restTemplate).body
+        val givenDoctor = executePostDoctors(restTemplate).body
 
-        val doctor = createDoctor()
         val givenCreateCommand = CreateVisitCommand(
             dateTime = LocalDateTime.of(2020, 1, 1, 12, 0),
             location = "Health 123, 12-222 Hospital",
-            patientId = createPatient(),
-            doctorId = doctor!!.id
+            patientId = givenPatient!!.id,
+            doctorId = givenDoctor!!.id
         )
 
         // when
@@ -89,7 +91,7 @@ class VisitControllerTest {
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(response.body).isNotNull
         assertThat(response.body!!.size).isEqualTo(1)
-        assertEquals(response.body!![0], givenCreateCommand, doctor)
+        assertEquals(response.body!![0], givenCreateCommand, givenDoctor, givenPatient)
     }
 
     @Test
@@ -101,8 +103,8 @@ class VisitControllerTest {
             CreateVisitCommand(
                 dateTime = LocalDateTime.of(2020, 1, 1, 12, 0),
                 location = "Health 123, 12-222 Hospital",
-                patientId = createPatient(),
-                doctorId = createDoctor()!!.id
+                patientId = executePostPatient(restTemplate).body!!.id,
+                doctorId = executePostDoctors(restTemplate).body!!.id
             )
         ).body
 
@@ -120,8 +122,8 @@ class VisitControllerTest {
     @Test
     internal fun shouldUpdateVisit() {
 
-        val givenDoctor = createDoctor()
-        val givenPatientId = createPatient()
+        val givenDoctor = executePostDoctors(restTemplate).body
+        val givenPatient = executePostPatient(restTemplate).body
         val givenDateTime = LocalDateTime.of(2020, 1, 1, 12, 0)
         val expectedDateTime = LocalDateTime.of(2020, 1, 2, 12, 0)
         val givenLocation = "Health 123, 12-222 Hospital"
@@ -131,7 +133,7 @@ class VisitControllerTest {
             CreateVisitCommand(
                 dateTime = givenDateTime,
                 location = givenLocation,
-                patientId = givenPatientId,
+                patientId = givenPatient!!.id,
                 doctorId = givenDoctor!!.id
             )
         ).body
@@ -149,53 +151,42 @@ class VisitControllerTest {
         assertThat(updateResponse.body).isNotNull
         assertThat(updateResponse.body!!.dateTime).isEqualTo(expectedDateTime)
         assertThat(updateResponse.body!!.location).isEqualTo(givenLocation)
-        assertThat(updateResponse.body!!.patientId).isEqualTo(givenPatientId)
+        assertThat(updateResponse.body!!.patient.id).isEqualTo(givenPatient.id)
         assertThat(updateResponse.body!!.doctor.id).isEqualTo(givenDoctor.id)
 
         val getResponse = executeGetVisits(restTemplate)
         assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(getResponse.body).isNotNull
         assertThat(getResponse.body!!.size).isEqualTo(1)
-        assertThat(updateResponse.body!!.dateTime).isEqualTo(expectedDateTime)
-        assertThat(updateResponse.body!!.location).isEqualTo(givenLocation)
-        assertThat(updateResponse.body!!.patientId).isEqualTo(givenPatientId)
-        assertThat(updateResponse.body!!.doctor.id).isEqualTo(givenDoctor.id)
+        assertThat(getResponse.body!![0].dateTime).isEqualTo(expectedDateTime)
+        assertThat(getResponse.body!![0].location).isEqualTo(givenLocation)
+        assertThat(getResponse.body!![0].patient.id).isEqualTo(givenPatient.id)
+        assertThat(getResponse.body!![0].doctor.id).isEqualTo(givenDoctor.id)
     }
 
     private fun assertEquals(
         actualVisit: VisitView?,
         expectedVisit: CreateVisitCommand,
-        expectedDoctor: DoctorView
+        expectedDoctor: DoctorView,
+        expectedPatient: PatientView
     ) {
         assertThat(actualVisit).isNotNull
         assertThat(actualVisit!!.dateTime).isEqualTo(expectedVisit.dateTime)
         assertThat(actualVisit.location).isEqualTo(expectedVisit.location)
         assertThat(actualVisit.doctor.id).isEqualTo(expectedVisit.doctorId)
-        assertThat(actualVisit.patientId).isEqualTo(expectedVisit.patientId)
+        assertThat(actualVisit.patient.id).isEqualTo(expectedVisit.patientId)
 
         assertThat(actualVisit.doctor.id).isEqualTo(expectedDoctor.id)
         assertThat(actualVisit.doctor.name).isEqualTo(expectedDoctor.name)
         assertThat(actualVisit.doctor.surname).isEqualTo(expectedDoctor.surname)
         assertThat(actualVisit.doctor.spec).isEqualTo(expectedDoctor.spec)
+
+        assertThat(actualVisit.patient.id).isEqualTo(expectedPatient.id)
+        assertThat(actualVisit.patient.name).isEqualTo(expectedPatient.name)
+        assertThat(actualVisit.patient.surname).isEqualTo(expectedPatient.surname)
+        assertThat(actualVisit.patient.address).isEqualTo(expectedPatient.address)
+
     }
-
-    private fun createDoctor() =
-        executePostDoctors(
-            restTemplate, CreateOrUpdateDoctorCommand(
-                "Jim",
-                "Bim",
-                "surgeon"
-            )
-        ).body
-
-    private fun createPatient() =
-        executePostPatient(
-            restTemplate, CreateOrUpdatePatientCommand(
-                "Jim",
-                "Bim",
-                "Jin 123, 12-123 Bim"
-            )
-        ).body!!.id
 
     object VisitTestUtils {
 
@@ -229,7 +220,6 @@ class VisitControllerTest {
             VisitView::class.java
         )
 
-
         fun executePutVisitDateTime(
             restTemplate: TestRestTemplate,
             updateVisitCommand: UpdateVisitDateTimeCommand,
@@ -240,7 +230,6 @@ class VisitControllerTest {
             HttpEntity(updateVisitCommand),
             VisitView::class.java
         )
-
 
         fun executeDeleteVisit(restTemplate: TestRestTemplate, id: Long): ResponseEntity<Void> {
             return restTemplate.exchange(

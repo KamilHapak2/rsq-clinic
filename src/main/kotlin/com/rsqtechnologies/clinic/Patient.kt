@@ -14,6 +14,10 @@ data class Patient(
     val name: String,
     val surname: String,
     val address: String,
+
+    @OneToMany(cascade = [CascadeType.REMOVE], mappedBy = "patient")
+    val visits: Set<Visit> = setOf(),
+
     @Version val version: Int? = 0,
     @Id
     @SequenceGenerator(

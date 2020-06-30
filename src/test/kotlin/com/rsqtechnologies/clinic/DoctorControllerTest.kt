@@ -1,6 +1,8 @@
 package com.rsqtechnologies.clinic
 
 import com.rsqtechnologies.clinic.DoctorControllerTest.DoctorTestUtils.executePostDoctors
+import com.rsqtechnologies.clinic.PatientControllerTest.PatientTestUtils.executePostPatient
+import com.rsqtechnologies.clinic.VisitControllerTest.VisitTestUtils
 import com.rsqtechnologies.clinic.VisitControllerTest.VisitTestUtils.executeGetVisit
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -69,7 +71,7 @@ class DoctorControllerTest {
     }
 
     @Test
-    internal fun shouldDeleteDoctor() {
+    internal fun shouldDeleteDoctorWithVisits() {
 
         // given
         val doctor =
@@ -77,9 +79,17 @@ class DoctorControllerTest {
                 restTemplate,
                 CreateOrUpdateDoctorCommand(name = "Joe", surname = "Doe", spec = "dent")
             ).body
-        val visit: VisitView = VisitControllerTest.VisitTestUtils.executePostVisit(
+
+        val patient = executePostPatient(restTemplate).body
+
+        val visit: VisitView = VisitTestUtils.executePostVisit(
             restTemplate,
-            CreateVisitCommand(LocalDateTime.of(2020, 12, 12, 12, 0), "location 123,  12-123 Test", doctor!!.id, 1)
+            CreateVisitCommand(
+                LocalDateTime.of(2020, 12, 12, 12, 0),
+                "location 123,  12-123 Test",
+                doctor!!.id,
+                patient!!.id
+            )
         ).body!!
 
         // when
@@ -133,7 +143,8 @@ class DoctorControllerTest {
 
         fun executePostDoctors(
             restTemplate: TestRestTemplate,
-            createDoctorCommand: CreateOrUpdateDoctorCommand
+            createDoctorCommand: CreateOrUpdateDoctorCommand =
+                CreateOrUpdateDoctorCommand("Jim", "Bim", "surgeon")
         ): ResponseEntity<DoctorView> = restTemplate.exchange(
             "/doctors",
             HttpMethod.POST,

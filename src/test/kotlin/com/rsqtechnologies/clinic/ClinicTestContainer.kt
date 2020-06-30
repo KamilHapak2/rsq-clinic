@@ -27,22 +27,15 @@ class ClinicTestContainer(imageName: String) : PostgreSQLContainer<ClinicTestCon
         }
     }
 
-
     class Initializer : ApplicationContextInitializer<ConfigurableApplicationContext> {
         override fun initialize(configurableApplicationContext: ConfigurableApplicationContext) {
             TestPropertyValues.of(
                 "spring.jpa.show-sql=true",
                 "spring.datasource.url=" + instance.jdbcUrl,
                 "spring.datasource.username=" + instance.username,
-                "spring.datasource.password=" + instance.password,
-                "spring.datasource.driver-class-name=org.postgresql.Driver",
-                "logging.level.org.hibernate.SQL=debug"
-            )
-                .applyTo(configurableApplicationContext.environment)
-
+                "spring.datasource.password=" + instance.password
+            ).applyTo(configurableApplicationContext.environment)
         }
     }
-
-
 }
 
